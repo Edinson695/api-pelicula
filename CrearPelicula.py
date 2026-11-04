@@ -1,16 +1,15 @@
 import boto3
 import uuid
 import os
+import json
 
 def lambda_handler(event, context):
     try:
-        # Entrada (json)
-        print(event) # Log json en CloudWatch
+        # Entrada
         tenant_id = event['body']['tenant_id']
         pelicula_datos = event['body']['pelicula_datos']
         nombre_tabla = os.environ["TABLE_NAME"]
-
-
+        
         # Proceso
         uuidv4 = str(uuid.uuid4())
         pelicula = {
@@ -18,11 +17,19 @@ def lambda_handler(event, context):
             'uuid': uuidv4,
             'pelicula_datos': pelicula_datos
         }
+        
         dynamodb = boto3.resource('dynamodb')
         table = dynamodb.Table(nombre_tabla)
         response = table.put_item(Item=pelicula)
-        # Salida (json)
-        print(pelicula) # Log json en CloudWatch
+        
+        # Generar log estandarizado para ejecución exitosa
+        log_info = {
+            "tipo": "INFO",
+            "log_datos": pelicula
+        }
+        print(json.dumps(log_info)) # Imprime el JSON en CloudWatch
+        
+        # Salida
         return {
             'statusCode': 200,
             'pelicula': pelicula,
@@ -30,7 +37,7 @@ def lambda_handler(event, context):
         }
         
     except Exception as e:
-        
+        # Generar log estandarizado para errores
         log_error = {
             "tipo": "ERROR",
             "log_datos": {
@@ -38,11 +45,10 @@ def lambda_handler(event, context):
                 "evento_recibido": event
             }
         }
-        print(json.dumps(log_error))
+        print(json.dumps(log_error)) # Imprime el JSON de error en CloudWatch
         
         return {
             'statusCode': 500,
             'mensaje': 'Ocurrió un error al procesar la solicitud',
             'error': str(e)
         }
-        
